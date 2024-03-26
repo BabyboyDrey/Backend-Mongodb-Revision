@@ -3,6 +3,8 @@ const cookieParser = require('cookie-parser')
 const cors = require('cors')
 const connectDb = require('./db/database')
 const app = express()
+const userRoutes = require('./controllers/users')
+const asyncErrCatcher = require('./middlewares/asyncErrCatcher')
 
 app.use(cookieParser())
 app.use(
@@ -12,8 +14,21 @@ app.use(
   })
 )
 app.use(express.json())
+app.use('/api/user', userRoutes)
 
 connectDb()
+
+app.get(
+  '/',
+  asyncErrCatcher(async (req, res) => {
+    try {
+      res.status(200).json('Server live and active!')
+    } catch (err) {
+      console.error(err)
+      res.status(500).json(`Err: ${err}`)
+    }
+  })
+)
 
 process.on('uncaughtException', err => {
   console.log(`Error: ${err.message}`)

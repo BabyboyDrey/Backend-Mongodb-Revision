@@ -7,6 +7,7 @@ const sendMail = require('../utils/sendMail')
 const asyncErrCatcher = require('../middlewares/asyncErrCatcher.js')
 const userToken = require('../utils/userToken.js')
 const userAuth = require('../middlewares/userAuth.js')
+const redisCache = require('../redis/setRedisCache')
 
 const createActivationToken = user => {
   return jwt.sign(user, process.env.JWT_SECRET, {
@@ -74,7 +75,7 @@ router.post('/sign-up', async (req, res) => {
 
 router.post('/:activationToken', async (req, res) => {
   try {
-    const token = req.params
+    const { token } = req.params
 
     const verified = verifyActivationToken(token)
     if (!verified) return res.status(400).json('Token Expired or NuLL')
@@ -107,7 +108,7 @@ router.post(
 router.put(
   '/update-userInfo',
   userAuth,
-  asyncErrCatcher(async (req, res) => {
+  asyncErrCatcher(async (req, res, next) => {
     try {
       const up_info = req.body
       const v_user = User.findOne({ username: req.user.username })
@@ -131,9 +132,37 @@ router.put(
 
         await v_user.save()
         userToken(v_user, 200, res)
+        next()
       }
     } catch (err) {
       res.status(500).json(`Err message: ${err}`)
+      next(err)
+    }
+  })
+)
+
+router.post(
+  '/redis-post',
+  redisCache,
+  userAuth,
+  asyncErrCatcher(async (req, res) => {
+    try {
+      const body_info = req.body
+
+      if (req.n_info) {
+        res.status(200).json({
+          redis: true,
+          data: req.n_info
+        })
+      } else {
+        res.status(200).json({
+          redis: false,
+          data: body_info
+        })
+      }
+    } catch (err) {
+      console.log(err)
+      res.status(500).json(`Err message: ${err.message}`)
     }
   })
 )
@@ -157,3 +186,5 @@ router.delete(
     }
   })
 )
+
+module.exports = router

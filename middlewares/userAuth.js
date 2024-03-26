@@ -2,7 +2,7 @@ const asyncErrCatcher = require('./asyncErrCatcher.js')
 const jwt = require('jsonwebtoken')
 const User = require('../models/users')
 
-exports.userAuth = asyncErrCatcher(async (req, res, next) => {
+module.exports = userAuth = asyncErrCatcher(async (req, res, next) => {
   const token = req.cookies.token
 
   if (!token)
