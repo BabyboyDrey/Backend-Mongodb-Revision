@@ -1,44 +1,51 @@
 const { createClient } = require('redis')
 const asyncErrCatcher = require('../middlewares/asyncErrCatcher')
 const dotenv = require('dotenv')
+const { promisify } = require('util')
 
-if (process.env.NODE_ENV !== 'Production') {
-  dotenv.config()
-}
-let redisClient = createClient({
+dotenv.config()
+
+const redisClient = createClient({
   legacyMode: true,
   url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
 })
+redisClient.connect().catch(console.error)
 
-// const setRedisCache = asyncErrCatcher(async (req, res, next) => {
-//   try {
-//     await redisClient.connect().catch(console.error)
-
-//     let upInfo = req.body
-//     await redisClient.setEx('info', 3600, JSON.stringify(upInfo))
-//     next()
-//   } catch (err) {
-//     console.error(`Error setting Redis cache: ${err}`)
-//     res.status(500).json({ error: true, message: 'Internal server error' })
-//   }
-// })
+redisClient.on('error', err => {
+  console.error('Redis connection error:', err)
+})
 
 const getRedisCache = asyncErrCatcher(async (req, res, next) => {
+  const setExAsync = promisify(redisClient.setEx).bind(redisClient) // Corrected method name to 'setex'
+
   try {
-    await redisClient.connect().catch(console.error)
-    await redisClient.get('info', async (err, data) => {
-      if (err) throw err
+    if (redisClient.connect) {
+      const getAsync = promisify(redisClient.get).bind(redisClient)
+
+      const data = await getAsync('info')
 
       if (data !== null) {
         req.n_info = data
-      } else {
-        let upInfo = req.body
-        await redisClient.setEx('info', 3600, JSON.stringify(upInfo))
+        return next()
+      }
+    }
+
+    redisClient.once('connect', async () => {
+      try {
+        await setExAsync('info', 3600, JSON.stringify(req.body))
         next()
+      } catch (err) {
+        console.error(`Error setting Redis cache: ${err}`)
+        res.status(500).json({ error: true, message: 'Internal server error' })
       }
     })
+
+    redisClient.once('error', err => {
+      console.error('Redis connection error:', err)
+      res.status(500).json({ error: true, message: 'Internal server error' })
+    })
   } catch (err) {
-    console.error(`Error setting Redis cache: ${err}`)
+    console.error(`Error accessing Redis cache: ${err}`)
     res.status(500).json({ error: true, message: 'Internal server error' })
   }
 })

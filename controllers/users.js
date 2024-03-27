@@ -19,6 +19,31 @@ const verifyActivationToken = token => {
   return jwt.verify(token, process.env.JWT_SECRET)
 }
 
+router.post(
+  '/redis-post',
+  redisCache,
+  asyncErrCatcher((req, res) => {
+    try {
+      const body_info = req.body
+
+      if (req.n_info) {
+        res.status(200).json({
+          redis: true,
+          data: req.n_info
+        })
+      } else {
+        res.status(200).json({
+          redis: false,
+          data: body_info
+        })
+      }
+    } catch (err) {
+      console.log(err)
+      res.status(500).json(`Err message: ${err.message}`)
+    }
+  })
+)
+
 router.post('/sign-up', async (req, res) => {
   try {
     const { username, email, password, age, electronicDevices } = req.body
@@ -137,32 +162,6 @@ router.put(
     } catch (err) {
       res.status(500).json(`Err message: ${err}`)
       next(err)
-    }
-  })
-)
-
-router.post(
-  '/redis-post',
-  redisCache,
-  userAuth,
-  asyncErrCatcher(async (req, res) => {
-    try {
-      const body_info = req.body
-
-      if (req.n_info) {
-        res.status(200).json({
-          redis: true,
-          data: req.n_info
-        })
-      } else {
-        res.status(200).json({
-          redis: false,
-          data: body_info
-        })
-      }
-    } catch (err) {
-      console.log(err)
-      res.status(500).json(`Err message: ${err.message}`)
     }
   })
 )
