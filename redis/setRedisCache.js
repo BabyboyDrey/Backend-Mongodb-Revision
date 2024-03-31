@@ -5,19 +5,18 @@ const { promisify } = require('util')
 
 dotenv.config()
 
-const redisClient = createClient({
-  legacyMode: true,
-  url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
-})
-redisClient.connect().catch(console.error)
-
-redisClient.on('error', err => {
-  console.error('Redis connection error:', err)
-})
-
 const getRedisCache = asyncErrCatcher(async (req, res, next) => {
-  const setExAsync = promisify(redisClient.setEx).bind(redisClient) // Corrected method name to 'setex'
+  const redisClient = createClient({
+    legacyMode: true,
+    url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
+  })
+  redisClient.connect().catch(console.error)
 
+  const setExAsync = promisify(redisClient.setEx).bind(redisClient)
+
+  redisClient.on('error', err => {
+    console.error('Redis connection error:', err)
+  })
   try {
     if (redisClient.connect) {
       const getAsync = promisify(redisClient.get).bind(redisClient)

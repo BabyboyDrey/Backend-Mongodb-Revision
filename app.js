@@ -46,3 +46,5 @@ process.on('unhandledRejection', err => {
 const server = app.listen(5000, (req, res) => {
   console.log('App is listening on port 5000')
 })
+
+module.exports = app
